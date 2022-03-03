@@ -1,11 +1,12 @@
-//import * as THREE from 'https://threejsfundamentals.org/threejs/resources/threejs/r127/build/three.module.js';
-
-//import {OrbitControls} from 'https://threejsfundamentals.org/threejs/resources/threejs/r127/examples/jsm/controls/OrbitControls.js';
 import { ImprovedNoise } from 'https://threejsfundamentals.org/threejs/resources/threejs/r127/examples//jsm/math/ImprovedNoise.js';
+
+
+let scene, camera, renderer, canvas;
+let A_Scene;
 
 let mesh, texture;
 
-const worldWidth = 1000, worldDepth = 1000;
+const worldWidth = 500, worldDepth = 500;
 const clock = new THREE.Clock();
 
 
@@ -13,101 +14,101 @@ let flag = 0;
 let keypressed_code = 0;
 
 
-
-let h1 = document.getElementById("first");
-h1.style.color = "red";
-
-let b = document.createElement('div');
-b.style.background = "pink";
-document.body.appendChild(b);
-
-
-let entity = document.querySelector("a-scene").sceneEl;
-console.log(entity);
-
-//let sceneElem = document.getElementsByTagName("a-scene")[0].sceneEl;
-let scene = entity.object3D;
-let renderer = entity.renderer;
-let camera = entity.camera;
-camera.el.components["wasd-controls"].data.acceleration = 1000;
-console.log(camera.el.components["wasd-controls"].data.acceleration);
-console.log(camera);
-let canvas = entity.canvas;
-
-
 init();
 animate();
 
-function render() {
-  renderer.render(scene, camera);
+function init() {
+
+  A_Scene = document.querySelector("a-scene").sceneEl;
+  console.log(A_Scene);
+  scene = A_Scene.object3D;
+  camera = A_Scene.camera;
+  renderer = A_Scene.renderer;
+  canvas = A_Scene.canvas;
+
+  //Scene Initialization
+  {
+    scene.background = new THREE.Color( 0xefd1b5 );
+    scene.fog = new THREE.FogExp2( 0xefd1b5, 0.001 );
+  }
+
+  //Camera Initialization 
+  {
+   //console.log(camera);
+    camera.position.set(0, 0, 0);
+    let wasd =  camera.el.components["wasd-controls"];
+    //wasd.data.acceleration = 1000;
+  }
+
+  //Renderer Initialization
+  {
+    renderer.setPixelRatio(window.devicePixelRatio );
+    renderer.setSize(window.innerWidth, window.innerHeight );
+    renderer.antialias = true;
+    renderer.autoClear = false;
+    renderer.autoClearColor = false;
+    renderer.preserveDrawingBuffer = true;
+    console.log(A_Scene.systems.renderer);
+    document.body.appendChild(renderer.domElement);
+  }
+
+  /* Mountain Gen
+  {
+    const data = generateHeight( worldWidth, worldDepth );
+
+    const geometry = new THREE.PlaneGeometry( 7500, 7500, worldWidth - 1, worldDepth - 1 );
+    geometry.rotateX( - Math.PI / 2 );
+
+    const vertices = geometry.attributes.position.array;
+
+    for ( let i = 0, j = 0, l = vertices.length; i < l; i ++, j += 3 ) {
+
+      vertices[ j + 1 ] = data[ i ] * 10;
+
+    }
+
+    texture = new THREE.CanvasTexture( generateTexture( data, worldWidth, worldDepth ) );
+    texture.wrapS = THREE.ClampToEdgeWrapping;
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+
+    mesh = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { map: texture } ) );
+    scene.add( mesh );
+    console.log("MESH! a frame")
+    console.log(scene);
+  }
+  */
+
+
+  window.addEventListener('resize', onWindowResize);
+
+  for(let i = 1; i < scene.children.length; i++) {
+    scene.children[i].name = "notnull";
+}
+
+}
+
+function render(scene, camera) {
+  try {
+    renderer.render(scene, camera);
+  } catch (error) {
+    console.error(error);
+  }
 }
 
 function animate() {
     requestAnimationFrame(animate);
-    render();
+    render(scene, camera);
 
 
-    if(flag){
-        //genBalls();
-    }
-
-}
-
-function init() {
-
-  //container = document.getElementById( 'container' );
-
-  scene.background = new THREE.Color( 0xefd1b5 );
-  scene.fog = new THREE.FogExp2( 0xefd1b5, 0.0025 );
-
-  const data = generateHeight( worldWidth, worldDepth );
-
-  //camera.position.set( 100, 800, - 800 );
-  //camera.lookAt( - 100, 810, - 800 );
-
-  const geometry = new THREE.PlaneGeometry( 7500, 7500, worldWidth - 1, worldDepth - 1 );
-  geometry.rotateX( - Math.PI / 2 );
-
-  const vertices = geometry.attributes.position.array;
-
-  for ( let i = 0, j = 0, l = vertices.length; i < l; i ++, j += 3 ) {
-
-    vertices[ j + 1 ] = data[ i ] * 10;
-
-  }
-
-  texture = new THREE.CanvasTexture( generateTexture( data, worldWidth, worldDepth ) );
-  texture.wrapS = THREE.ClampToEdgeWrapping;
-  texture.wrapT = THREE.ClampToEdgeWrapping;
-
-  mesh = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { map: texture } ) );
-  scene.add( mesh );
-
-  renderer.setPixelRatio( window.devicePixelRatio );
-  renderer.setSize( window.innerWidth, window.innerHeight );
-  document.body.appendChild( renderer.domElement );
-
-  window.addEventListener( 'resize', onWindowResize );
-
-}
-
-function onWindowResize() {
-
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-
-  renderer.setSize( window.innerWidth, window.innerHeight );
-
-  //entity.look.handleResize();
-
+    genBalls();
 }
 
 function generateHeight( width, height ) {
 
-  let seed = Math.PI / 4;
+  let seed = Math.PI / 2;
   window.Math.random = function () {
 
-    const x = Math.sin( seed ++ ) * 10000;
+    const x = Math.sin( seed ++ ) * 100;
     return x - Math.floor( x );
 
   };
@@ -143,16 +144,15 @@ function generateTexture( data, width, height ) {
   const sun = new THREE.Vector3( 1, 1, 1 );
   sun.normalize();
 
-  let canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
+  let newcanvas = document.createElement('canvas');
+  newcanvas.width = width;
+  newcanvas.height = height;
 
-  context = canvas.getContext( '2d' );
-  console.log(context);
+  context = newcanvas.getContext( '2d' );
   context.fillStyle = '#000';
   context.fillRect( 0, 0, width, height );
 
-  image = context.getImageData( 0, 0, canvas.width, canvas.height );
+  image = context.getImageData( 0, 0, newcanvas.width, newcanvas.height );
   imageData = image.data;
 
   for ( let i = 0, j = 0, l = imageData.length; i < l; i += 4, j ++ ) {
@@ -175,19 +175,17 @@ function generateTexture( data, width, height ) {
   // Scaled 4x
 
   const canvasScaled = document.createElement('canvas');
-  console.log(canvasScaled);
-  canvasScaled.width = width * 4;
-  canvasScaled.height = height * 4;
+  canvasScaled.width = width * 2;
+  canvasScaled.height = height * 2;
 
   context = canvasScaled.getContext("2d");
-  console.log(context);
-  context.scale( 4, 4 );
-  context.drawImage( canvas, 0, 0 );
+  context.scale( 2, 2 );
+  context.drawImage( newcanvas, 0, 0 );
 
   image = context.getImageData( 0, 0, canvasScaled.width, canvasScaled.height );
   imageData = image.data;
 
-  for ( let i = 0, l = imageData.length; i < l; i += 4 ) {
+  for ( let i = 0, l = imageData.length; i < l; i += 2 ) {
 
     const v = ~ ~ ( Math.random() * 5 );
 
@@ -204,9 +202,6 @@ function generateTexture( data, width, height ) {
 }
 
 
-
-
-
 function getRandomIntInclusive(min, max) {
 
     min = Math.ceil(min);
@@ -215,16 +210,13 @@ function getRandomIntInclusive(min, max) {
     return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
-for(let i = 1; i < scene.children.length; i++) {
-    scene.children[i].name = "notnull";
-}
-
 
 function genBalls() {
   
     let balls = [];
+    const perlin = new ImprovedNoise();
   
-    while(balls.length < 10) {
+    while(balls.length < 5) {
       const color = new THREE.Color(Math.random(), Math.random(), Math.random());
   
       const geometry = new THREE.SphereGeometry( 0.1, 16, 16 );
@@ -239,13 +231,17 @@ function genBalls() {
     for(const ball of balls) {
       scene.add(ball);
     }
+
+    //console.log(Math.abs( perlin.noise( 300, 3, 3 ) * 1.75))
   
     for(let i = 1; i < scene.children.length; i++) {
         if(scene.children[i].name == '') {
             let ball = scene.children[i];
             
-            ball.position.z -= 0.035;
+
+            ball.position.x += Math.abs( perlin.noise( 3, 3, 3 ));
             ball.position.y += (keypressed_code / 1000);
+            ball.position.z -= 0.05;
         
             if(ball.position.z < -5) {
                 scene.remove(ball);
@@ -255,14 +251,26 @@ function genBalls() {
   
 }
 
-/* DOCUMENT EVENT LISTENERS */
 
 
-/* 'keydown' Event Listener */
-document.addEventListener('keydown', function(event) {
+
+
+/* EVENT LISTENERS */
+
+function onWindowResize() {
+
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize( window.innerWidth, window.innerHeight );
+
+}
+
+
+document.addEventListener('keydown', (event) => {
   if(event.keyCode != 0) {
       keypressed_code = event.keyCode;
-      console.log(keypressed_code);
+      //console.log(keypressed_code);
       flag = 1;
   }
 });
+
