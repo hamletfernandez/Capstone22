@@ -12,5 +12,9 @@
   }, 
   "dependencies": {
     "three": "^0.138.3"
+  },
+  "engines": {
+    "npm": "7.19.0",
+    "node": "v16.1.0"
   }
 }
