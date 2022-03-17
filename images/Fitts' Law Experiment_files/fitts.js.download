@@ -1,0 +1,342 @@
+var FittsLawExperiment = Class.create();
+
+FittsLawExperiment.kStateStopped = 0;
+FittsLawExperiment.kStateSuspend = 1;
+FittsLawExperiment.kStateRunning = 2;
+
+
+FittsLawExperiment.prototype = {
+    initialize: function (trialswidth, trialsampl, trialsinput, startbtn, options) {
+	this.trialswidth = $(trialswidth);
+	this.trialsampl = $(trialsampl);
+	this.trialsinput = $(trialsinput);
+	this.startbtn = $(startbtn);
+	this.options = Object.extend(
+	    {
+		activeColor: "blue",
+		inactiveColor: "grey",
+		minTrials: 3,
+		// 	widthOptions: [16, 32, 64, 128, 192],
+		// 	amplitudeOptions: [64, 128, 256, 512],
+ 		widthOptions: [64, 128, 192],
+		amplitudeOptions: [128, 256, 512, 1024]
+	    }, options || {});
+	this.state = FittsLawExperiment.kStateStopped;
+	this.expwidth = window.innerWidth;
+	this.expheight = window.innerHeight - 50;
+	this.createTargets();
+	this.observeEvents();
+	//      this.rawRecords = [[128, 192, 100], [128, 192, 100], [256, 192, 1], [512, 192, 100]];
+	//      this.plotResults();
+    },
+
+    createTargets: function() {
+	this.leftTarget = this.createRectangle(0, 25, 0, this.expheight);
+	this.rightTarget = this.createRectangle(0, 25, 0, this.expheight);
+	this.leftTarget.hide();
+	this.rightTarget.hide();
+    },
+
+    generateConditions: function() {
+	this.conditions = [];
+	var othis = this;
+	this.options.widthOptions.each(function(width) {
+					   othis.options.amplitudeOptions.each(function(amplitude) {
+										   if (amplitude > width) {
+										       othis.conditions.push({'width': width, 'amplitude': amplitude});
+										   }
+									       }); });
+	this.fisherYates(this.conditions);
+    },
+
+    fisherYates: function(myArray) {
+	var i = myArray.length;
+	if ( i == 0 ) return;
+	while ( --i ) {
+	    var j = Math.floor( Math.random() * ( i + 1 ) );
+	    var tempi = myArray[i];
+	    var tempj = myArray[j];
+	    myArray[i] = tempj;
+	    myArray[j] = tempi;
+	}
+    },
+
+    observeEvents: function () {
+	this.startbtn.observe('click', this.startbtnHandler.bindAsEventListener(this));
+	this.leftTarget.observe('mousedown', this.clickHandler.bindAsEventListener(this));
+	this.rightTarget.observe('mousedown', this.clickHandler.bindAsEventListener(this));
+	document.body.observe('mousedown', this.clickHandler.bindAsEventListener(this));
+	//     $('canvas').observe('click', this.clickHandler.bindAsEventListener(this));
+	//     $('canvas').observe('mousemove', this.moveHandler.bindAsEventListener(this));
+    },
+
+    unobserveEvents: function () {
+	this.startbtn.stopObserving();
+    },
+
+    resetStats: function () {
+	this.errorCnt = 0;
+	this.curCondition = 0;
+	this.rawRecords = new Array();
+    },
+
+    start: function () {
+	if (this.state != FittsLawExperiment.kStateStopped) return;
+	this.trials = parseInt(this.trialsinput.value);
+	if (isNaN(this.trials) || this.trials < this.options.minTrials) {
+	    alert("Enter a number for trial that is greater than " + this.options.minTrials);
+	    return;
+	}
+	this.options.widthOptions = this.trialswidth.value.split(',').collect(function(x) {
+										  return parseInt(x);
+									      });
+	this.options.amplitudeOptions = this.trialsampl.value.split(',').collect(function(x) {
+										     return parseInt(x);
+										 });
+	this.generateConditions();
+	//alert(this.conditions.inspect());
+	if (isNaN(this.trials) || this.trials <= 1) {
+	    alert('trials should be greater than 1.');
+	    return;
+	}
+	this.startbtn.value = 'Running';
+	this.state = FittsLawExperiment.kStateSuspend;
+	this.resetStats();
+	this.startCondition();
+
+	$('toolbar').fade();
+	$('toolbar-label').fade();
+	this.leftTarget.appear();
+	this.rightTarget.appear();
+    },
+
+    getCurrentCondition: function() {
+	return this.conditions[this.curCondition];
+    },
+
+    startCondition: function() {
+	this.curTrial = 0;
+	this.layoutTargets(this.getCurrentCondition());
+	this.startTrial();
+	this.state = FittsLawExperiment.kStateRunning;
+    },
+
+    finishCondition: function() {
+	this.curCondition++;
+	if (this.curCondition == this.conditions.length) {
+	    this.finish();
+	} else {
+	    this.state = FittsLawExperiment.kStateSuspend;
+	    this.startCondition();
+	}
+    },
+
+    layoutTargets: function(condition) {
+	var width = condition.width;
+	var amplitude = condition.amplitude;
+	this.leftTarget.style.width = width + "px";
+	this.leftTarget.style.left = (this.expwidth / 2 - amplitude / 2 - width / 2) + "px";
+	this.rightTarget.style.width = width + "px";
+	this.rightTarget.style.left = (this.expwidth / 2 + amplitude / 2 - width / 2) + "px";
+    },
+
+    switchTarget: function() {
+	if (this.leftTarget.className == 'active-target') {
+	    this.leftTarget.className = 'inactive-target';
+	    this.rightTarget.className = 'active-target';
+	} else {
+	    this.leftTarget.className = 'active-target';
+	    this.rightTarget.className = 'inactive-target';
+	}
+    },
+
+    addRecord: function () {
+	if (this.curTrial < 1) return;
+	var condition = this.getCurrentCondition();
+	var A = condition.amplitude;
+	var W = condition.width;
+	var T = new Date().getTime() - this.trialBeginTime;
+	this.rawRecords.push([A, W, T]);
+    },
+
+    startTrial: function () {
+	this.switchTarget();
+	this.trialBeginTime = new Date().getTime();
+    },
+
+    finishTrial: function (successful) {
+	if (successful) {
+	    this.addRecord();
+	    this.curTrial++;
+	}
+	if (this.curTrial >= this.trials) {
+	    this.finishCondition();
+	} else {
+	    this.startTrial();
+	}
+    },
+
+    finish: function () {
+	this.state = FittsLawExperiment.kStateStopped;
+	this.plotResults();
+	this.startbtn.value = 'Done';
+	this.unobserveEvents();
+	this.leftTarget.fade();
+	this.rightTarget.fade();
+	$('placeholder').hide();
+	alert("DONE!");
+    },
+
+    clickHandler: function (e) {
+	if (!Event.isLeftClick(e)) return;
+	if (this.state == FittsLawExperiment.kStateRunning) {
+	    if (e.target.className == 'active-target') {
+		this.finishTrial(true);
+		Event.stop(e);
+	    } else {
+		this.finishTrial(false);
+		this.errorCnt++;
+	    }
+	}
+    },
+
+    startbtnHandler: function(e) {
+	this.start();
+	Event.stop(e);
+    },
+
+    calculateRegression: function () {
+	var othis = this;
+	var records = [];
+	this.conditions.each(function(cond) {
+				 var count = 0;
+				 var sum = 0;
+				 var A, W;
+				 othis.rawRecords.each(function(r) {
+							   if (r[0] == cond.amplitude && r[1] == cond.width) {
+							       A = r[0], W = r[1];
+							       count++;
+							       sum += r[2];
+							   }
+						       });
+				 records.push([A, W, sum /count]);
+			     });
+	var ip = 0;
+	var ss = 0;
+	var sumx = 0;
+	var sumy = 0;
+	var len = records.length;
+	var XY = records.map(function (d) {
+				 return [Math.log(d[0] / d[1] + 1) / Math.log(2), d[2]];
+			     });
+	var xmean = XY.inject(0, function (acc, d) { return acc + d[0]; }) / len;
+	var ymean = XY.inject(0, function (acc, d) { return acc + d[1]; }) / len;
+	var sumxy = XY.inject(0, function (acc, d) { return acc + (d[0] - xmean) * (d[1] - ymean); });
+	var sumxx = XY.inject(0, function (acc, d) { return acc + (d[0] - xmean) * (d[0] - xmean); });
+	var slope = sumxy / sumxx;
+	var intercept = ymean - slope * xmean;
+
+	var sx = Math.sqrt(XY.inject(0, function (acc, d) { return acc + (d[0] - xmean) * (d[0] - xmean); }) / (len - 1));
+	var sy = Math.sqrt(XY.inject(0, function (acc, d) { return acc + (d[1] - ymean) * (d[1] - ymean); }) / (len - 1));
+
+	var r = XY.inject(0, function (acc, d) { return acc + (d[0] - xmean) / sx * (d[1] - ymean) / sy; }) / (len - 1);
+	var R = Math.abs(r);
+	return {'records': records, 'slope': slope, 'intercept': intercept, 'R': R};
+    },
+
+    plotResults: function () {
+
+	function value2Str(v) {
+	    if (v===+v && v!==(v|0)) {
+		return "" + v.toFixed(0);
+	    }
+	    return "" + v;
+	}
+
+	var results = this.calculateRegression();
+	var tableEl = $('results-table');
+	var allTableEl = $('all-results-table');
+	var trEl = document.createElement('tr');
+	['A', 'W', 'MT', 'ID'].each(function (val) {
+					var tdEl = document.createElement('td');
+					tdEl.innerHTML = val;
+					trEl.appendChild(tdEl);
+				    });
+	tableEl.appendChild(trEl);
+	results.records.each(function (record) {
+				 record.push(Math.log(record[0] / record[1] + 1) / Math.log(2));
+				 //record.push(Math.log(record[0]/record[1] + 1) / Math.log(2));
+				 var trEl = document.createElement('tr');
+				 record.each(function (val) {
+						 var tdEl = document.createElement('td');
+						 tdEl.innerHTML = value2Str(val);
+						 trEl.appendChild(tdEl);
+					     });
+				 tableEl.appendChild(trEl);
+			     });
+
+	trEl = document.createElement('tr');
+	['A', 'W', 'MT', 'ID'].each(function (val) {
+					var tdEl = document.createElement('td');
+					tdEl.innerHTML = val;
+					trEl.appendChild(tdEl);
+				    });
+	allTableEl.appendChild(trEl);
+	this.rawRecords.each(function (record) {
+				 record.push(Math.log(record[0] / record[1] + 1) / Math.log(2));
+				 //record.push(Math.log(record[0]/record[1] + 1) / Math.log(2));
+				 var trEl = document.createElement('tr');
+				 record.each(function (val) {
+						 var tdEl = document.createElement('td');
+						 tdEl.innerHTML = value2Str(val);
+						 trEl.appendChild(tdEl);
+					     });
+				 allTableEl.appendChild(trEl);
+			     });
+
+
+	$('stats').innerHTML = 'Error: ' + this.errorCnt /*/ (this.trials * this.conditions.length)*/ + '<br/>';
+	$('stats').innerHTML += 'MT = ' + results.intercept.toFixed(3) + ' + ' + results.slope.toFixed(3) + 'log(A/W + 1)' + '<br/>';
+	$('stats').innerHTML += 'RSquare = ' + (results.R * results.R).toFixed(3);
+
+	$('results').appear();
+	$('results').scrollTo();
+    },
+
+
+    createRectangle: function(left, top,  width, height) {
+	var rectel = $(document.createElement('div'));
+	rectel.addClassName('target');
+	rectel.style.top = top + "px";
+	rectel.style.left = left + "px";
+	rectel.style.width = width + "px";
+	rectel.style.height = height + "px";
+	document.body.appendChild(rectel);
+	return rectel;
+    },
+
+    createCircle: function(x, y, radius, color) {
+	var circleel = document.createElement('canvas');
+	circleel.addClassName('target');
+	circleel.style.top = (y - radius) + "px";
+	circleel.style.left = (x - radius) + "px";
+	circleel.width = radius * 2;
+	circleel.height = radius * 2;
+
+	document.body.appendChild(circleel);
+
+	var ctx = circleel.getContext("2d");
+	ctx.fillStyle = color;
+	ctx.beginPath();
+	ctx.arc(100, 100, 100, 0, Math.PI * 2, true);
+	ctx.fill();
+
+	return circleel;
+    },
+
+    distance: function (x1, y1, x2, y2) {
+	return Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
+    }
+
+};
+
