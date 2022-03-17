@@ -9,8 +9,6 @@ import {FilmPass} from 'three/examples/jsm/postprocessing/FilmPass.js';
 import {ShaderPass} from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import {PixelShader} from 'three/examples/jsm/shaders/PixelShader.js';
 import {HalftonePass} from 'three/examples/jsm/postprocessing/HalftonePass.js';
-
-
 //Constants
 let mainScene, mainCamera, renderer, canvas;
 let mainComposer, filmRenderTarget;
