@@ -2,6 +2,7 @@
   "name": "capstone",
   "version": "0.0.0",
   "scripts": {
+    "start": "node main.js",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
