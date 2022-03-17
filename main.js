@@ -133,7 +133,9 @@ function init() {
 
   //Orbit Controls
   mainControls = new OrbitControls(mainCamera, canvas);
+  mainControls.enabled = false;
   mainControls.maxPolarAngle = Math.PI / 2;
+  mainControls.maxAzimuthAngle = 0
   mainControls.enableDamping = true;
   mainControls.dampingFactor = 0.15;
   mainCamera.position.set(1,0,0);
@@ -172,7 +174,7 @@ function init() {
   mainScene.add(floor);
 
   //Front Wall
-  const frontGeometry = new THREE.PlaneGeometry(planeHeight * scale * 500, planeHeight * 5);
+  const frontGeometry = new THREE.PlaneGeometry(planeHeight * scale * 500, planeHeight * 8);
   const frontMaterial = new THREE.MeshPhongMaterial({
     color: 0xffffff,
     side: THREE.DoubleSide
@@ -253,8 +255,8 @@ function init() {
       });
 
 
-      art.makeFrame(8, 8);
-      art.frame.position.set( -(planeWidth * scale) + 0.05, 3.5, 25 - (1 * 25));
+      art.makeFrame(10, 10);
+      art.frame.position.set( -(planeWidth * scale) + 0.05, 5, 25 - (1 * 25));
       art.frame.rotation.y = Math.PI/2;
       mainScene.add(art.frame);
 
@@ -324,7 +326,6 @@ function init() {
 
 function render() {
 
-  mainControls.enabled = true;
   renderer.autoClearColor = false;
 
   
@@ -487,11 +488,11 @@ function genBalls() {
   
 
   for(const ball of balls) {
-    if(numKeys >= 4) {
+    if(numKeys == 4) {
       ball.position.set(
-        getRandomIntInclusive(-10, 10), 
-        getRandomIntInclusive(-10, 10), 
-        getRandomIntInclusive(-10, 10));
+        getRandomIntInclusive(-20, 20), 
+        getRandomIntInclusive(-20, 20), 
+        getRandomIntInclusive(-20, 20));
       
       ball.material.color = color;
     }
@@ -521,7 +522,7 @@ function genBalls() {
     }
   }
 
-  if(numKeys >= 1) {
+  if(numKeys == 1) {
     art.makeControls(canvas);
     art.controls.enabled = false;
     art.controls.target.set(0, 0, 0);
@@ -533,6 +534,7 @@ function genBalls() {
 
   if(numKeys == 2) {
     art.controls.target.set(0, 2, 0);
+    art.camera.up.set(0, 1, 0);
       art.controls.autoRotateSpeed = 3;
   }
 
@@ -543,10 +545,13 @@ function genBalls() {
   }
   
   if(numKeys == 8) {
-    
-    art.controls.target.set(
-      3, 0, 0);
-      art.controls.autoRotateSpeed = 5;
+  
+    art.camera.up.set(1, 1, 3);
+    art.controls.autoRotateSpeed = 5;
+  } 
+
+  if(numKeys >= 15) {
+    art.camera.up.set(0,0,-3)
   }
 
   if(numKeys >= 20) {
