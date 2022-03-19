@@ -7,9 +7,15 @@ import {RenderPass} from 'three/examples/jsm/postprocessing/RenderPass.js';
 import {FilmPass} from 'three/examples/jsm/postprocessing/FilmPass.js';
 import {ShaderPass} from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import {PixelShader} from 'three/examples/jsm/shaders/PixelShader.js';
+import {Pass} from 'three/examples/jsm/postprocessing/Pass.js';
 import {HalftonePass} from 'three/examples/jsm/postprocessing/HalftonePass.js';
+//import {OBJLoader} from 'three/examples/jsm/loaders/OBJLoader.js';
+import { AfterimagePass } from 'three/examples/jsm/postprocessing/AfterimagePass.js';
+import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
+import Stats from 'three/examples/jsm/libs/stats.module'
+import { Vector2 } from 'three';
 //Constants
-let mainScene, mainCamera, renderer, canvas;
+let mainScene, mainCamera, renderer, canvas, stats;
 let mainComposer, filmRenderTarget;
 let raycaster;
 let mouse = {
@@ -113,6 +119,9 @@ function init() {
   near = 0.1; 
   far = 1000;
   mainCamera = new THREE.PerspectiveCamera(fov, aspectRatio, near, far);
+  mainCamera.position.set(1,5,0);
+  //const helper = new THREE.CameraHelper( mainCamera );
+  //mainScene.add( helper );
 
   //Renderer init
   renderer = new THREE.WebGLRenderer({
@@ -128,16 +137,16 @@ function init() {
   //Raycaster init
   raycaster = new THREE.Raycaster();
 
+  stats = Stats()
+  document.body.appendChild(stats.dom)
+
   //Orbit Controls
   mainControls = new OrbitControls(mainCamera, canvas);
-  mainControls.enabled = false;
-  mainControls.maxPolarAngle = Math.PI / 2;
-  mainControls.maxAzimuthAngle = 0
+  //mainControls.enabled = false;
+  mainControls.maxPolarAngle = -Math.PI / 2;
+  mainControls.maxAzimuthAngle = Math.PI/2;
   mainControls.enableDamping = true;
   mainControls.dampingFactor = 0.15;
-  mainCamera.position.set(1,0,0);
-  //mainCamera.lookAt(-(1 * 7), 4, 0)
-  mainCamera.rotateX(Math.PI / 2);
 
   //Loader init
   loader = new THREE.TextureLoader();
@@ -151,8 +160,8 @@ function init() {
     });
 
   //Light
-  const light = new THREE.AmbientLight( 0xffffff, 0.7); // soft white light
-  mainScene.add( light );
+  const ambientLight = new THREE.AmbientLight( 0xffffff, 0.7); // soft white light
+  mainScene.add( ambientLight );
 
   //Planes
   const planeWidth = 2;
@@ -161,7 +170,7 @@ function init() {
 
   //floor
   const floorGeo = new THREE.PlaneGeometry(planeWidth * scale * 2, planeHeight * scale * 500);
-  const floorMat = new THREE.MeshBasicMaterial({
+  const floorMat = new THREE.MeshPhongMaterial({
     color: 0xcfcfcfcf,
     side: THREE.DoubleSide,
   });
@@ -171,7 +180,7 @@ function init() {
   mainScene.add(floor);
 
   //Front Wall
-  const frontGeometry = new THREE.PlaneGeometry(planeHeight * scale * 500, planeHeight * 8);
+  const frontGeometry = new THREE.PlaneGeometry(planeHeight * scale * 500, planeHeight * 20);
   const frontMaterial = new THREE.MeshPhongMaterial({
     color: 0xffffff,
     side: THREE.DoubleSide
@@ -213,6 +222,18 @@ function init() {
   backWall.position.set( planeWidth * scale, 4, 0 );
   backWall.rotation.y = -Math.PI/2;
   mainScene.add(backWall);
+
+
+  //Spotlight
+  const mainSpot = new THREE.SpotLight( 0xcfcfcf );
+  mainSpot.position.set( -(planeWidth * scale) + 14, 10, 25 - (1 * 25));
+  mainScene.add( mainSpot );
+  mainSpot.castShadow = true;
+  mainSpot.intensity = 0.5;
+  mainSpot.decay = 0;
+  mainSpot.angle = 0.8;
+  //mainSpot.penumbra = 0.5;
+
 
 
   //2d art
@@ -257,6 +278,9 @@ function init() {
       art.frame.rotation.y = Math.PI/2;
       mainScene.add(art.frame);
 
+      mainSpot.target = mainCamera;
+
+      console.log(mainCamera)
       art.makeControls(canvas);
 
       const spotLight = new THREE.SpotLight( 0xcfcfcf );
@@ -319,11 +343,14 @@ function init() {
   line = new THREE.Line(geometry, material);
   line.geometry.verticesNeedUpdate = true;
 
+  loadCarpet();
+
 }
 
 function render() {
 
   renderer.autoClearColor = false;
+  mainCamera.lookAt(new THREE.Vector3(-(5 * 7) + 0.05, 5, 25 - (1 * 25)))
 
   
   for(const art of artworks) {
@@ -332,7 +359,7 @@ function render() {
     }
     art.camera.aspect = rtWidth / rtHeight;
     art.camera.updateProjectionMatrix();
-    art.composer.passes[3].enabled = true;
+    //art.composer.passes[0].enabled = true;
     art.composer.render();
   }
 
@@ -346,21 +373,24 @@ function animate() {
   mainControls.update();
   artworks[0].controls.update();
   TWEEN.update();
-  render();
+  stats.update();
+  //render();
 
   
 
   //genLines();
   genBalls();
   //genCircles(numKeys);
-
+   
   if(!CLICK) {
     render();
   } else {
-    mainControls.enabled = false;
-    artworks[1].composer.render();
-
+    //mainControls.enabled = false;
+    
+    artworks[0].composer.render();
+    //artworks[0].composer.passes[3].enabled = false;
   }
+  
     
     
 }
@@ -492,6 +522,8 @@ function genBalls() {
         getRandomIntInclusive(-20, 20));
       
       ball.material.color = color;
+    }
+    if(numKeys == 8) {
     }
     art.scene.add(ball);
   }
@@ -665,46 +697,11 @@ function makeComposer(scene, camera) {
 
   //Pass 0- RenderPass
   let renderPass = new RenderPass(scene, camera);
-  //renderPass.enabled = true;
-
-  //Pass 1- FilmPass
-  let filmPass = new FilmPass(
-      1, //noise intensity
-      0.025, //scanline intensity
-      648, //scanline count
-      true, //grayscale
-  );
-  filmPass.enabled = false;
-
-  //Pass 2 -Pixelpass
-  let pixelPass = new ShaderPass( PixelShader );
-  pixelPass.uniforms[ "resolution" ].value = new THREE.Vector2( window.innerWidth, window.innerHeight );
-	pixelPass.uniforms[ "resolution" ].value.multiplyScalar( window.devicePixelRatio );
-  pixelPass.enabled = false;
-
-  //Pass 3- HalftonePass
-  const params = {
-    shape: 1,
-    radius: 4,
-    rotateR: Math.PI / 12,
-    rotateB: Math.PI / 12 * 2,
-    rotateG: Math.PI / 12 * 3,
-    scatter: 0,
-    blending: 0,
-    blendingMode: 0,
-    greyscale: false,
-    disable: false
-  };
-
-  let halftonePass = new HalftonePass(params);
-  //halftonePass.enabled = false;
+  let afterImagePass = new AfterimagePass();
 
   //List of passes in order
   composer.addPass(renderPass);
-  composer.addPass(filmPass);
-  composer.addPass(pixelPass);
-  composer.addPass(halftonePass);
-  //composer.addPass(renderPass);
+  composer.addPass(afterImagePass);
 
 
   return composer;
@@ -715,8 +712,27 @@ function makeComposer(scene, camera) {
 
 function introScene() {
 
+  let scene, camera;
 
 
+
+
+}
+
+
+function loadCarpet() {
+  {
+    const gltfLoader = new GLTFLoader();
+    gltfLoader.load('models/scene.gltf', (gltf) => {
+      const root = gltf.scene;
+      root.children[0].children[0].children[0].children[2].scale.set(0.2, 0.2, 0.2)
+      let carpet = root.children[0].children[0].children[0].children[2].children[1];
+      carpet.position.set(-29, -0.85, -16);
+      carpet.rotation.set(Math.PI/2, 0, 0);
+      carpet.scale.set(0.2, 0.2, 0.2);
+      mainScene.add(carpet);
+    });
+  }
 }
 
 
