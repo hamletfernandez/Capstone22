@@ -4,24 +4,13 @@ import {EffectComposer} from 'three/examples/jsm/postprocessing/EffectComposer.j
 import { ImprovedNoise } from 'three/examples/jsm/math/ImprovedNoise.js';
 import { TWEEN } from 'three/examples/jsm/libs/tween.module.min'
 import {RenderPass} from 'three/examples/jsm/postprocessing/RenderPass.js';
-import {FilmPass} from 'three/examples/jsm/postprocessing/FilmPass.js';
-import {ShaderPass} from 'three/examples/jsm/postprocessing/ShaderPass.js';
-import {PixelShader} from 'three/examples/jsm/shaders/PixelShader.js';
-import {Pass} from 'three/examples/jsm/postprocessing/Pass.js';
-import {HalftonePass} from 'three/examples/jsm/postprocessing/HalftonePass.js';
-//import {OBJLoader} from 'three/examples/jsm/loaders/OBJLoader.js';
 import { AfterimagePass } from 'three/examples/jsm/postprocessing/AfterimagePass.js';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import Stats from 'three/examples/jsm/libs/stats.module'
-import { Vector2 } from 'three';
 //Constants
 let mainScene, mainCamera, renderer, canvas, stats;
 let mainComposer, filmRenderTarget;
 let raycaster;
-let mouse = {
-  x: undefined,
-  y: undefined
-}
   
 
 const rtWidth = 1024;
@@ -44,7 +33,7 @@ let balls = [];
 //main camera parameters
 let fov, aspectRatio, near, far, mainControls; 
 //loader
-let loader, objLoader, mtlLoader;
+let loader;
 
 let CLICK;
 let points = [], line, newGeo, newMat, newLine;
@@ -128,14 +117,11 @@ function init() {
     preserveDrawingBuffer: true
   });
   renderer.autoClearColor = false;
-  canvas = renderer.domElement;
   renderer.setSize(innerWidth, innerHeight);
   renderer.setPixelRatio(devicePixelRatio);
+  canvas = renderer.domElement;
   document.body.appendChild(canvas);
   window.addEventListener( 'resize', onWindowResize );
-
-  //Raycaster init
-  raycaster = new THREE.Raycaster();
 
   stats = Stats()
   document.body.appendChild(stats.dom)
@@ -344,6 +330,7 @@ function init() {
   line.geometry.verticesNeedUpdate = true;
 
   loadCarpet();
+  loadFrame();
 
 }
 
@@ -352,17 +339,14 @@ function render() {
   renderer.autoClearColor = false;
   mainCamera.lookAt(new THREE.Vector3(-(5 * 7) + 0.05, 5, 25 - (1 * 25)))
 
-  
-  for(const art of artworks) {
-    if(art.controls != undefined) {
-      art.controls.enabled = false;
-    }
-    art.camera.aspect = rtWidth / rtHeight;
-    art.camera.updateProjectionMatrix();
-    //art.composer.passes[0].enabled = true;
-    art.composer.render();
+  let art = artworks[0];
+ 
+  if(art.controls != undefined) {
+    art.controls.enabled = false;
   }
-
+  art.camera.updateProjectionMatrix();
+  art.composer.render();
+  
   mainComposer.render();
   CLICK = false;
 
@@ -378,17 +362,12 @@ function animate() {
 
   
 
-  //genLines();
   genBalls();
-  //genCircles(numKeys);
    
   if(!CLICK) {
     render();
   } else {
-    //mainControls.enabled = false;
-    
     artworks[0].composer.render();
-    //artworks[0].composer.passes[3].enabled = false;
   }
   
     
@@ -403,11 +382,6 @@ function onWindowResize() {
   renderer.setSize( window.innerWidth, window.innerHeight );
 
 }
-
-addEventListener('mousemove', (event) => {
-  mouse.x = (event.clientX / innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / innerHeight) * 2 + 1;
-})
 
 
 addEventListener('keypress', (e) => {
@@ -458,36 +432,6 @@ function getRandomIntInclusive(min, max) {
   min = Math.ceil(min);
   max = Math.floor(max);
   return Math.floor(Math.random() * (max - min + 1) + min);
-}
-
-
-function genLines() {
-  if (points.length < 3) {
-    points.push(new THREE.Vector3(
-      getRandomIntInclusive(-3, 3),
-      getRandomIntInclusive(-2, 2),
-      getRandomIntInclusive(-10, 20)
-    ));
-    
-
-    //console.log(points);
-    let newGeo = new THREE.BufferGeometry().setFromPoints([
-      points[points.length - 2],
-      points[points.length - 1]
-    ]);
-
-    let newMat = new THREE.LineBasicMaterial();
-
-    newLine = new THREE.Line(newGeo, newMat);
-    //newLine.lookAt(new THREE.Vector3(0,0,0));
-    newLine.rotation.x += 0.5;
-    artworks[0].scene.add(newLine);
-  }
-
-  newLine.rotation.z += 2;
-  newLine.rotation.y += 3;
-  newLine.rotation.x += 3;
-
 }
 
 function genBalls() {
@@ -547,7 +491,10 @@ function genBalls() {
       //ball.position.z -= 0.035
 
     if(ball.position.z < -5) {
-      art.scene.remove(ball);
+      art.scene.remove(ball)
+      ball.geometry.dispose();
+      ball.material.dispose();
+
     }
   }
 
@@ -591,67 +538,6 @@ function genBalls() {
 
 }
 
-
-function genCircles(numKeys) {
-
-
-  const art = artworks[1];
-
-  art.controls.update();
-    if(art.scene.children.length - 5 < numKeys + 1) {
-      
-      const color = new THREE.Color(Math.random(), Math.random(), Math.random());
-
-      const geometry = new THREE.SphereGeometry( 2, 16 );
-      const material = new THREE.MeshPhongMaterial( { 
-        color: color, 
-        side: THREE.DoubleSide
-      } );
-
-      const circle = new THREE.Mesh( geometry, material );
-      if(numKeys == 1) {
-        circle.position.set(0, 0, 0);
-      } else {
-        circle.position.set(
-          getRandomIntInclusive(-5, 5),
-          getRandomIntInclusive(-5, 5),
-          getRandomIntInclusive(-5, 5)
-        )
-      }
-
-      //art.scene.add( circle );
-      
-    }
-    console.log(numKeys)
-
-    /*
-    if(numKeys >= 10) {
-      art.makeControls(canvas);
-      art.controls.enabled = false;
-      art.controls.target.set(0,0,0);
-      art.controls.autoRotate = true;
-      art.controls.autoRotateSpeed = 1;
-      
-      let perlin = new ImprovedNoise();
-
-      new TWEEN.Tween(art.scene.children[10].position)
-      .to(
-          {
-              x: perlin.noise(0.5, 0.5, 0.5) * x,
-              y: perlin.noise(0.5, 0.5, 0.5) * y,
-              z: perlin.noise(0.5, 0.5, 0.5) * z,
-          },
-          1000
-      )
-      .easing( TWEEN.Easing.Cubic.Out )
-      .start()
-
-      
-      
-    }
-    */
-  
-}
 
 
 
@@ -721,18 +607,38 @@ function introScene() {
 
 
 function loadCarpet() {
-  {
-    const gltfLoader = new GLTFLoader();
-    gltfLoader.load('models/scene.gltf', (gltf) => {
-      const root = gltf.scene;
-      root.children[0].children[0].children[0].children[2].scale.set(0.2, 0.2, 0.2)
-      let carpet = root.children[0].children[0].children[0].children[2].children[1];
-      carpet.position.set(-29, -0.85, -16);
-      carpet.rotation.set(Math.PI/2, 0, 0);
-      carpet.scale.set(0.2, 0.2, 0.2);
-      mainScene.add(carpet);
-    });
-  }
+  
+  const gltfLoader = new GLTFLoader();
+
+  gltfLoader.load('models/Carpet/scene.gltf', (gltf) => {
+    const root = gltf.scene;
+    root.children[0].children[0].children[0].children[2].scale.set(0.2, 0.2, 0.2)
+    let carpet = root.children[0].children[0].children[0].children[2].children[1];
+    carpet.position.set(-29, -0.85, -16);
+    carpet.rotation.set(Math.PI/2, 0, 0);
+    carpet.scale.set(0.2, 0.2, 0.2);
+    mainScene.add(carpet);
+  });
+  
+}
+
+function loadFrame() {
+
+  const gltfLoader = new GLTFLoader();
+  
+  gltfLoader.load('models/Frame3/scene.gltf', (gltf) => {
+    const root = gltf.scene;
+    console.log(root);
+    let frame = root.children[0].children[0];
+    console.log(frame);
+    //frame.material.roughness = 0.1;
+    //frame.material.metalness = 0.5;
+    frame.position.set( -(5 * 2), 5, 25 - (1 * 29));
+    frame.rotation.set(0, 0, Math.PI/2);
+    frame.scale.set(0.85, 0.5, 0.85);
+    //mainScene.add(frame);
+  });
+
 }
 
 
