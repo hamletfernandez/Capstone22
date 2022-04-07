@@ -1,16 +1,21 @@
 import * as THREE from 'three';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import {EffectComposer} from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { ImprovedNoise } from 'three/examples/jsm/math/ImprovedNoise.js';
-import { TWEEN } from 'three/examples/jsm/libs/tween.module.min'
+import {ImprovedNoise} from 'three/examples/jsm/math/ImprovedNoise.js';
+import {TWEEN} from 'three/examples/jsm/libs/tween.module.min'
 import {RenderPass} from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { AfterimagePass } from 'three/examples/jsm/postprocessing/AfterimagePass.js';
+import {AfterimagePass} from 'three/examples/jsm/postprocessing/AfterimagePass.js';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import Stats from 'three/examples/jsm/libs/stats.module'
+
+
+//Assets!////////
+
+
+
 //Constants
 let mainScene, mainCamera, renderer, canvas, stats;
-let mainComposer, filmRenderTarget;
-let raycaster;
+let mainComposer;
   
 
 const rtWidth = 1024;
@@ -49,14 +54,12 @@ class Art {
     this.composer = makeComposer(this.scene, this.camera);
   }
 
-
   makeFrame(width, height) {
 
     const geometry = new THREE.PlaneGeometry(width, height);
     
-    let material = new THREE.MeshPhongMaterial({
+    let material = new THREE.MeshBasicMaterial({
       map: this.composer.renderTarget2.texture,
-      side: THREE.DoubleSide
     });
     
     this.frame = new THREE.Mesh(geometry, material);
@@ -73,22 +76,7 @@ class Art {
     this.controls = controls;
   }
 
-  loadTexture(string) {
-    const loader = new THREE.TextureLoader();
-    this.texture = loader.load(string);
-  }
-
-  loadObject(mesh) {
-    this.mesh = mesh;
-  }
-
 }
-
-
-
-
-
-
 
 init();
 animate();
@@ -147,73 +135,14 @@ function init() {
 
   //Light
   const ambientLight = new THREE.AmbientLight( 0xffffff, 0.7); // soft white light
-  mainScene.add( ambientLight );
+  //mainScene.add( ambientLight );
 
-  //Planes
-  const planeWidth = 2;
-  const planeHeight = 2;
-  const scale = 7;
-
-  //floor
-  const floorGeo = new THREE.PlaneGeometry(planeWidth * scale * 2, planeHeight * scale * 500);
-  const floorMat = new THREE.MeshPhongMaterial({
-    color: 0xcfcfcfcf,
-    side: THREE.DoubleSide,
-  });
-  const floor = new THREE.Mesh(floorGeo, floorMat);
-  floor.position.set(0, -planeHeight/2, 0);
-  floor.rotation.x = Math.PI/2;
-  mainScene.add(floor);
-
-  //Front Wall
-  const frontGeometry = new THREE.PlaneGeometry(planeHeight * scale * 500, planeHeight * 20);
-  const frontMaterial = new THREE.MeshPhongMaterial({
-    color: 0xffffff,
-    side: THREE.DoubleSide
-  });
-  const frontWall = new THREE.Mesh(frontGeometry, frontMaterial);
-  frontWall.position.set( -(planeWidth * scale), 4, 0);
-  frontWall.rotation.y = Math.PI/2;
-  mainScene.add(frontWall);
-
-  //Left Wall
-  const leftGeometry = new THREE.PlaneGeometry(planeHeight * scale * 5, planeHeight * 5);
-  const leftMaterial = new THREE.MeshPhongMaterial({
-    color: 0xffffff,
-    side: THREE.DoubleSide
-  });
-  const left = new THREE.Mesh(leftGeometry, leftMaterial);
-  left.position.set( -(planeWidth * scale), 4, 500);
-  left.rotation.y = -Math.PI;
-  mainScene.add(left);
-
-  //Right Wall
-  const rightGeometry = new THREE.PlaneGeometry(planeHeight * scale * 5, planeHeight * 5);
-  const rightMaterial = new THREE.MeshPhongMaterial({
-    color: 0xffffff,
-    side: THREE.DoubleSide
-  });
-  const rightWall = new THREE.Mesh(rightGeometry, rightMaterial);
-  rightWall.position.set( -(planeWidth * scale), 4, -500);
-  rightWall.rotation.y = Math.PI;
-  mainScene.add(rightWall);
-
-  //Back Wall
-  const backGeometry = new THREE.PlaneGeometry(planeHeight * scale * 500, planeHeight * 5);
-  const backMaterial = new THREE.MeshPhongMaterial({
-    color: 0xcfcfcf,
-    side: THREE.DoubleSide
-  });
-  const backWall = new THREE.Mesh(backGeometry, backMaterial);
-  backWall.position.set( planeWidth * scale, 4, 0 );
-  backWall.rotation.y = -Math.PI/2;
-  mainScene.add(backWall);
-
+  makeRoom();
 
   //Spotlight
   const mainSpot = new THREE.SpotLight( 0xcfcfcf );
-  mainSpot.position.set( -(planeWidth * scale) + 14, 10, 25 - (1 * 25));
-  mainScene.add( mainSpot );
+  mainSpot.position.set( -(2 * 7) + 14, 10, 25 - (1 * 25));
+  //mainScene.add( mainSpot );
   mainSpot.castShadow = true;
   mainSpot.intensity = 0.5;
   mainSpot.decay = 0;
@@ -229,79 +158,32 @@ function init() {
     artworks.push(Gen);
       const art = artworks[0];
 
-      //simple lighting
-      //add spotlights source to scene
-      {
-        const spotLight = new THREE.SpotLight( 0xffffff );
-        spotLight.position.set( 0, 14, 10 );
-
-        spotLight.castShadow = true;
-
-        spotLight.shadow.mapSize.width = 1024;
-        spotLight.shadow.mapSize.height = 1024;
-
-        spotLight.shadow.camera.near = 500;
-        spotLight.shadow.camera.far = 4000;
-        spotLight.shadow.camera.fov = 30;
-
-        art.scene.add( spotLight );
-
-       
-          const light = new THREE.AmbientLight( 0xffffff, 1); // soft white light
-          //art.scene.add( light );
-        
-      }
-
-      const geometry = new THREE.PlaneGeometry(20, 20);
-      const material = new THREE.MeshPhongMaterial({
-        map: art.texture,
-        side: THREE.DoubleSide
-      });
-
-
       art.makeFrame(10, 10);
-      art.frame.position.set( -(planeWidth * scale) + 0.05, 5, 25 - (1 * 25));
+      art.frame.position.set( -(2 * 7) + 0.05, 5, 25 - (1 * 25));
       art.frame.rotation.y = Math.PI/2;
       mainScene.add(art.frame);
 
       mainSpot.target = mainCamera;
 
-      console.log(mainCamera)
       art.makeControls(canvas);
 
       const spotLight = new THREE.SpotLight( 0xcfcfcf );
-      spotLight.position.set( -(planeWidth * scale) + 10, 3.5, 25 - (1 * 25));
+      spotLight.position.set( -(2 * 7) + 10, 20, 25 - (1 * 25));
       mainScene.add( spotLight );
       spotLight.target = art.frame;
       spotLight.castShadow = true;
-      spotLight.intensity = 0.5;
+      spotLight.intensity = 1;
       spotLight.decay = 0;
-      spotLight.angle = 0.7;
-      spotLight.penumbra = 0.5;
+      spotLight.angle = 0.5;
+      spotLight.penumbra = 0.8;
 
-      
-      if(art.scene.children.length < 2) {
-        for(let i = 0; i < 5; i++) {
-          const color = new THREE.Color(Math.random(), Math.random(), Math.random());
-          const geometry = new THREE.SphereGeometry( 2, 16 );
-          const material = new THREE.MeshBasicMaterial( { color: color } );
-          const circle = new THREE.Mesh( geometry, material );
-          circle.position.set(
-            getRandomIntInclusive(-10, 10),
-            getRandomIntInclusive(-10, 10),
-            getRandomIntInclusive(-10, 10)
-          )
-  
-          //art.scene.add( circle );
-        }
-      }
 
    
-        artworks[0].makeControls(canvas);
-        artworks[0].controls.enabled = false;
-        artworks[0].controls.target.set(0,0,0);
-        //artworks[i].controls.autoRotate = true;
-        //artworks[i].controls.autoRotateSpeed = 2;
+      art.makeControls(canvas);
+      art.controls.enabled = false;
+      art.controls.target.set(0,0,0);
+      //artworks[i].controls.autoRotate = true;
+      //artworks[i].controls.autoRotateSpeed = 2;
 
       
   }
@@ -310,27 +192,9 @@ function init() {
   mainComposer = new EffectComposer(renderer, mainRenderTarget);
   mainComposer.addPass(new RenderPass(mainScene, mainCamera));
   mainComposer.setSize(canvas.width, canvas.height);
-  
-  points.push(new THREE.Vector3(
-    getRandomIntInclusive(-4, 4),
-    getRandomIntInclusive(-4, 4),
-    getRandomIntInclusive(-4, 4)
-  ));
-  points.push(new THREE.Vector3(
-    getRandomIntInclusive(-4, 4),
-    getRandomIntInclusive(-4, 4),
-    getRandomIntInclusive(-4, 4)
-  ));
-
-  const geometry = new THREE.BufferGeometry().setFromPoints(points);
-  const material = new THREE.LineBasicMaterial({
-    color: new THREE.Color('white')
-  });
-  line = new THREE.Line(geometry, material);
-  line.geometry.verticesNeedUpdate = true;
 
   loadCarpet();
-  loadFrame();
+  //loadFrame();
 
 }
 
@@ -360,8 +224,6 @@ function animate() {
   stats.update();
   //render();
 
-  
-
   genBalls();
    
   if(!CLICK) {
@@ -369,7 +231,6 @@ function animate() {
   } else {
     artworks[0].composer.render();
   }
-  
     
     
 }
@@ -388,6 +249,8 @@ addEventListener('keypress', (e) => {
 
   if(keysHeld.indexOf(e.key) == -1) {
     keysHeld.push(e.key);
+    console.log('DOWN')
+    console.log(e.key)
     numKeys++;
   }
 
@@ -401,16 +264,26 @@ addEventListener('keypress', (e) => {
   }
 })
 
+// https://stackoverflow.com/questions/5203407/how-to-detect-if-multiple-keys-are-pressed-at-once-using-javascript
+let count = 0; 
+var map = {}; // You could also use an array
+onkeydown = onkeyup = function(e){
+    e = e || event; // to deal with IE
+    map[e.keyCode] = e.type == 'keydown';
+
+    if(map[e.keyCode] == true) {
+      count++;
+    } else {
+      count--;
+    }
+}
+
+
 addEventListener('keyup', (e) => {
   if(numKeys > 0) {
     numKeys--;
     keysHeld.pop()
-    console.log("UP");
-    
   }
-  
-  
-
 
   switch(e.keyCode) {
     case 27: // 'ESC'
@@ -438,6 +311,7 @@ function genBalls() {
   const art = artworks[0];
   art.controls.update();
 
+  const loader = new THREE.TextureLoader();
 
   
   const color = new THREE.Color(Math.random(), Math.random(), Math.random());
@@ -446,7 +320,10 @@ function genBalls() {
     
     let perlin = new ImprovedNoise();
     const geometry = new THREE.SphereGeometry( 0.1, 20, 10 );
-    const material = new THREE.MeshBasicMaterial( { color: 0xffffff} );
+    const material = new THREE.MeshBasicMaterial({
+       color: 0xffffff,
+       //map: starTexture,
+    });
     let sphere = new THREE.Mesh( geometry, material );
     sphere.position.set(
       getRandomIntInclusive(-5, 5), 
@@ -520,9 +397,10 @@ function genBalls() {
     
   }
   
+  //console.log(numKeys);
   if(numKeys == 8) {
   
-    art.camera.up.set(1, 1, 3);
+    art.camera.up.set(1, 2, 3);
     art.controls.autoRotateSpeed = 5;
   } 
 
@@ -537,18 +415,6 @@ function genBalls() {
   
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 function makeScene() {
@@ -589,7 +455,6 @@ function makeComposer(scene, camera) {
   composer.addPass(renderPass);
   composer.addPass(afterImagePass);
 
-
   return composer;
 
 }
@@ -599,8 +464,6 @@ function makeComposer(scene, camera) {
 function introScene() {
 
   let scene, camera;
-
-
 
 
 }
@@ -614,7 +477,10 @@ function loadCarpet() {
     const root = gltf.scene;
     root.children[0].children[0].children[0].children[2].scale.set(0.2, 0.2, 0.2)
     let carpet = root.children[0].children[0].children[0].children[2].children[1];
-    carpet.position.set(-29, -0.85, -16);
+    //console.log(root.children[0].children[0].children[0].children[2].children[1].children[0].children[0]);
+    root.children[0].children[0].children[0].children[2].children[1].children[0].children[0].material.opacity = 0;
+    //console.log(carpet);
+    carpet.position.set(-31, -0.85, -16);
     carpet.rotation.set(Math.PI/2, 0, 0);
     carpet.scale.set(0.2, 0.2, 0.2);
     mainScene.add(carpet);
@@ -633,12 +499,86 @@ function loadFrame() {
     console.log(frame);
     //frame.material.roughness = 0.1;
     //frame.material.metalness = 0.5;
-    frame.position.set( -(5 * 2), 5, 25 - (1 * 29));
+    frame.position.set( -(5 * 3), 5, 25 - (1 * 29));
     frame.rotation.set(0, 0, Math.PI/2);
     frame.scale.set(0.85, 0.5, 0.85);
     //mainScene.add(frame);
   });
 
+}
+
+
+function loadSkyBox() {
+  const skyBoxtexture = loader.load(
+    './images/space1.jpg',
+    () => {
+      const rt = new THREE.WebGLCubeRenderTarget(skyBoxtexture.image.height);
+      rt.fromEquirectangularTexture(renderer, skyBoxtexture);
+      mainScene.background = rt.texture;
+    });
+}
+
+
+function makeRoom() {
+  //Planes
+  const planeWidth = 2;
+  const planeHeight = 2;
+  const scale = 7;
+
+  //floor
+  const floorGeo = new THREE.PlaneGeometry(planeWidth * scale * 2, planeHeight * scale * 500);
+  const floorMat = new THREE.MeshPhongMaterial({
+    color: 0xcfcfcfcf,
+    side: THREE.DoubleSide,
+  });
+  const floor = new THREE.Mesh(floorGeo, floorMat);
+  floor.position.set(0, -planeHeight/2, 0);
+  floor.rotation.x = Math.PI/2;
+  mainScene.add(floor);
+
+  //Front Wall
+  const frontGeometry = new THREE.PlaneGeometry(planeHeight * scale * 500, planeHeight * 20);
+  const frontMaterial = new THREE.MeshPhongMaterial({
+    color: 0xffffff,
+    side: THREE.DoubleSide
+  });
+  const frontWall = new THREE.Mesh(frontGeometry, frontMaterial);
+  frontWall.position.set( -(planeWidth * scale), 4, 0);
+  frontWall.rotation.y = Math.PI/2;
+  mainScene.add(frontWall);
+
+  //Left Wall
+  const leftGeometry = new THREE.PlaneGeometry(planeHeight * scale * 5, planeHeight * 5);
+  const leftMaterial = new THREE.MeshPhongMaterial({
+    color: 0xffffff,
+    side: THREE.DoubleSide
+  });
+  const left = new THREE.Mesh(leftGeometry, leftMaterial);
+  left.position.set( -(planeWidth * scale), 4, 500);
+  left.rotation.y = -Math.PI;
+  mainScene.add(left);
+
+  //Right Wall
+  const rightGeometry = new THREE.PlaneGeometry(planeHeight * scale * 5, planeHeight * 5);
+  const rightMaterial = new THREE.MeshPhongMaterial({
+    color: 0xffffff,
+    side: THREE.DoubleSide
+  });
+  const rightWall = new THREE.Mesh(rightGeometry, rightMaterial);
+  rightWall.position.set( -(planeWidth * scale), 4, -500);
+  rightWall.rotation.y = Math.PI;
+  mainScene.add(rightWall);
+
+  //Back Wall
+  const backGeometry = new THREE.PlaneGeometry(planeHeight * scale * 500, planeHeight * 5);
+  const backMaterial = new THREE.MeshPhongMaterial({
+    color: 0xcfcfcf,
+    side: THREE.DoubleSide
+  });
+  const backWall = new THREE.Mesh(backGeometry, backMaterial);
+  backWall.position.set( planeWidth * scale, 4, 0 );
+  backWall.rotation.y = -Math.PI/2;
+  mainScene.add(backWall);
 }
 
 
