@@ -97,8 +97,7 @@ function init() {
   far = 1000;
   mainCamera = new THREE.PerspectiveCamera(fov, aspectRatio, near, far);
   mainCamera.position.set(1,5,0);
-  //const helper = new THREE.CameraHelper( mainCamera );
-  //mainScene.add( helper );
+
 
   //Renderer init
   renderer = new THREE.WebGLRenderer({
@@ -116,7 +115,7 @@ function init() {
 
   //Orbit Controls
   mainControls = new OrbitControls(mainCamera, canvas);
-  //mainControls.enabled = false;
+  mainControls.enabled = false;
   mainControls.maxPolarAngle = -Math.PI / 2;
   mainControls.maxAzimuthAngle = Math.PI/2;
   mainControls.enableDamping = true;
@@ -175,13 +174,13 @@ function init() {
       spotLight.intensity = 1;
       spotLight.decay = 0;
       spotLight.angle = 0.5;
-      spotLight.penumbra = 0.8;
+      spotLight.penumbra = 0.6;
 
 
    
       art.makeControls(canvas);
       art.controls.enabled = false;
-      art.controls.target.set(0,0,0);
+      //art.controls.target.set(0,0,0);
       //artworks[i].controls.autoRotate = true;
       //artworks[i].controls.autoRotateSpeed = 2;
 
@@ -230,6 +229,8 @@ function animate() {
     render();
   } else {
     artworks[0].composer.render();
+    artworks[0].camera.rotation.y += 1;
+    console.log(artworks[0].camera.rotation)
   }
     
     
@@ -249,8 +250,8 @@ addEventListener('keypress', (e) => {
 
   if(keysHeld.indexOf(e.key) == -1) {
     keysHeld.push(e.key);
-    console.log('DOWN')
-    console.log(e.key)
+    //console.log('DOWN')
+    //console.log(e.key)
     numKeys++;
   }
 
@@ -344,8 +345,13 @@ function genBalls() {
       
       ball.material.color = color;
     }
-    if(numKeys == 8) {
-    }
+
+    if(numKeys == 7) {
+      console.log(numKeys)
+      art.camera.up.set(1, 2, 3);
+      art.controls.autoRotateSpeed = 5;
+    } 
+
     art.scene.add(ball);
   }
 
@@ -368,21 +374,16 @@ function genBalls() {
       //ball.position.z -= 0.035
 
     if(ball.position.z < -5) {
-      art.scene.remove(ball)
-      ball.geometry.dispose();
-      ball.material.dispose();
-
+      disposeHierarchy(ball, disposeNode);
     }
   }
 
   if(numKeys == 1) {
     art.makeControls(canvas);
     art.controls.enabled = false;
-    art.controls.target.set(0, 0, 0);
+    //art.controls.target.set(0, 0, 0);
     art.controls.autoRotate = true;
-    art.controls.autoRotateSpeed = 2;
-    //art.controls.screenSpacePanning = true;
-    
+    art.controls.autoRotateSpeed = 7;
   }
 
   if(numKeys == 2) {
@@ -391,18 +392,21 @@ function genBalls() {
       art.controls.autoRotateSpeed = 3;
   }
 
+  if(numKeys == 3) {
+    art.controls.target.set(0, -4, -10);
+    art.camera.up.set(1, 1, 0);
+    art.camera.rotation.z++;
+    art.controls.autoRotateSpeed = -3;
+  }
+
   if(numKeys == 4) {
-    art.controls.target.set(0, 0, 0);
+    art.controls.target.set(getRandomIntInclusive(-7, 7), 0, 7);
     art.controls.autoRotateSpeed = 5;
+
     
   }
   
   //console.log(numKeys);
-  if(numKeys == 8) {
-  
-    art.camera.up.set(1, 2, 3);
-    art.controls.autoRotateSpeed = 5;
-  } 
 
   if(numKeys >= 15) {
     art.camera.up.set(0,0,-3)
@@ -591,3 +595,68 @@ function scene2() {
 }
 
 
+/// GARBAGE COLLECTION /////
+// https://stackoverflow.com/questions/33152132/three-js-collada-whats-the-proper-way-to-dispose-and-release-memory-garbag
+function disposeNode (node)
+{
+    if (node instanceof THREE.Mesh)
+    {
+        if (node.geometry)
+        {
+            node.geometry.dispose ();
+        }
+
+        if (node.material)
+        {
+            if (node.material instanceof THREE.MeshFaceMaterial)
+            {
+                $.each (node.material.materials, function (idx, mtrl)
+                {
+                    if (mtrl.map)               mtrl.map.dispose ();
+                    if (mtrl.lightMap)          mtrl.lightMap.dispose ();
+                    if (mtrl.bumpMap)           mtrl.bumpMap.dispose ();
+                    if (mtrl.normalMap)         mtrl.normalMap.dispose ();
+                    if (mtrl.specularMap)       mtrl.specularMap.dispose ();
+                    if (mtrl.envMap)            mtrl.envMap.dispose ();
+                    if (mtrl.alphaMap)          mtrl.alphaMap.dispose();
+                    if (mtrl.aoMap)             mtrl.aoMap.dispose();
+                    if (mtrl.displacementMap)   mtrl.displacementMap.dispose();
+                    if (mtrl.emissiveMap)       mtrl.emissiveMap.dispose();
+                    if (mtrl.gradientMap)       mtrl.gradientMap.dispose();
+                    if (mtrl.metalnessMap)      mtrl.metalnessMap.dispose();
+                    if (mtrl.roughnessMap)      mtrl.roughnessMap.dispose();
+
+                    mtrl.dispose ();    // disposes any programs associated with the material
+                });
+            }
+            else
+            {
+                if (node.material.map)              node.material.map.dispose ();
+                if (node.material.lightMap)         node.material.lightMap.dispose ();
+                if (node.material.bumpMap)          node.material.bumpMap.dispose ();
+                if (node.material.normalMap)        node.material.normalMap.dispose ();
+                if (node.material.specularMap)      node.material.specularMap.dispose ();
+                if (node.material.envMap)           node.material.envMap.dispose ();
+                if (node.material.alphaMap)         node.material.alphaMap.dispose();
+                if (node.material.aoMap)            node.material.aoMap.dispose();
+                if (node.material.displacementMap)  node.material.displacementMap.dispose();
+                if (node.material.emissiveMap)      node.material.emissiveMap.dispose();
+                if (node.material.gradientMap)      node.material.gradientMap.dispose();
+                if (node.material.metalnessMap)     node.material.metalnessMap.dispose();
+                if (node.material.roughnessMap)     node.material.roughnessMap.dispose();
+
+                node.material.dispose ();   // disposes any programs associated with the material
+            }
+        }
+    }
+}   // disposeNode
+
+function disposeHierarchy (node, callback)
+{
+    for (var i = node.children.length - 1; i >= 0; i--)
+    {
+        var child = node.children[i];
+        disposeHierarchy (child, callback);
+        callback (child);
+    }
+}
