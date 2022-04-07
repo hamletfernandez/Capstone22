@@ -1,0 +1,16 @@
+function gup(name) {
+  name = name.replace(/[\[]/,"\\\[").replace(/[\]]/,"\\\]");
+  var regex = new RegExp("[\\?&]"+name+"=([^&#]*)");
+  var results = regex.exec(window.location.href);
+  return results == null ? null : results[1];
+}
+
+function drawCircle(x, y, radius, color) {
+  var canvas = document.getElementById("canvas");
+  var ctx = canvas.getContext("2d");
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2, true);
+  ctx.fill();
+}
+
