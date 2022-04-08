@@ -19,7 +19,7 @@ let mainScene, mainCamera, renderer, canvas, stats;
 let mainComposer;
   
 
-const rtWidth = 1024;
+const rtWidth = 2048;
 const rtHeight = 1024;
 let rtParameters = { 
   minFilter: THREE.LinearFilter, 
@@ -272,15 +272,16 @@ function animate() {
     artworks[0].border.position.y += 1.3 ** (numKeys / 8) - 1;
     }
 
-    if (mainCamera.position.y > 125 && mainCamera.position.y < 200) {
-      mainScene.fog.density += 0.0012;
+    if (mainCamera.position.y > 165 && mainCamera.position.y < 200) {
+      mainScene.fog.density += 0.0015;
     } else if (mainCamera.position.y > 180) {
         artworks[0].frame.visible = false;
         artworks[0].border.visible = false;
     } else {
       //console.log(mainScene.fog.density)
       if(mainScene.fog.density > 0.015) {
-        mainScene.fog.density -= 0.0035;
+        mainScene.fog.density -= 0.0045;
+        console.log(mainScene.fog.density)
       }
       artworks[0].frame.visible = true;
       artworks[0].border.visible = true;
@@ -531,7 +532,6 @@ function genBalls() {
       let scaleX = ball.scale.x;
       let scaleY = ball.scale.y;
       let scaleZ = ball.scale.z;
-       //console.log(ball.scale);
 
       if(scaleX > 1) {
         ball.scale.set(scaleX -= 0.02, scaleY -= 0.02, scaleZ -= 0.02 );
