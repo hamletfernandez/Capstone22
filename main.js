@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import * as DISPOSE from './dispose.js'
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import {EffectComposer} from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import {ImprovedNoise} from 'three/examples/jsm/math/ImprovedNoise.js';
@@ -66,9 +67,13 @@ class Art {
 
   }
 
+  makeFrameBorder(border) {
+    this.border = border;
+  }
+
   makeControls(canvas) {
     let controls = new OrbitControls(this.camera, canvas);
-    controls.enabled = false;
+    //controls.enabled = true;
     //controls.enableRotate = false;
     //controls.minDistance = 0.5;
     //controls.maxDistance = 25;
@@ -96,7 +101,7 @@ function init() {
   near = 0.1; 
   far = 1000;
   mainCamera = new THREE.PerspectiveCamera(fov, aspectRatio, near, far);
-  mainCamera.position.set(1,5,0);
+  mainCamera.position.set(1,6,0);
 
 
   //Renderer init
@@ -116,21 +121,15 @@ function init() {
   //Orbit Controls
   mainControls = new OrbitControls(mainCamera, canvas);
   mainControls.enabled = false;
-  mainControls.maxPolarAngle = -Math.PI / 2;
-  mainControls.maxAzimuthAngle = Math.PI/2;
-  mainControls.enableDamping = true;
-  mainControls.dampingFactor = 0.15;
+  //mainControls.maxPolarAngle = -Math.PI / 2;
+  //mainControls.maxAzimuthAngle = Math.PI/2;
+  //mainControls.enableDamping = true;
+  //mainControls.dampingFactor = 0.15;
 
   //Loader init
   loader = new THREE.TextureLoader();
 
-  const skyBoxtexture = loader.load(
-    './images/space1.jpg',
-    () => {
-      const rt = new THREE.WebGLCubeRenderTarget(skyBoxtexture.image.height);
-      rt.fromEquirectangularTexture(renderer, skyBoxtexture);
-      mainScene.background = rt.texture;
-    });
+  //loadSkyBox()
 
   //Light
   const ambientLight = new THREE.AmbientLight( 0xffffff, 0.7); // soft white light
@@ -158,15 +157,16 @@ function init() {
       const art = artworks[0];
 
       art.makeFrame(10, 10);
-      art.frame.position.set( -(2 * 7) + 0.05, 5, 25 - (1 * 25));
+      art.frame.position.set( -(2 * 7) + 0.05, 6, 25 - (1 * 25));
       art.frame.rotation.y = Math.PI/2;
       mainScene.add(art.frame);
+      loadFrameBorder();
 
       mainSpot.target = mainCamera;
 
       art.makeControls(canvas);
 
-      const spotLight = new THREE.SpotLight( 0xcfcfcf );
+      const spotLight = new THREE.SpotLight( 0xffffff );
       spotLight.position.set( -(2 * 7) + 10, 20, 25 - (1 * 25));
       mainScene.add( spotLight );
       spotLight.target = art.frame;
@@ -176,10 +176,13 @@ function init() {
       spotLight.angle = 0.5;
       spotLight.penumbra = 0.6;
 
+      const artAmbient = new THREE.AmbientLight(0xffffff);
+      art.scene.add(artAmbient);
+
 
    
-      art.makeControls(canvas);
-      art.controls.enabled = false;
+      //art.makeControls(canvas);
+      //art.controls.enabled = false;
       //art.controls.target.set(0,0,0);
       //artworks[i].controls.autoRotate = true;
       //artworks[i].controls.autoRotateSpeed = 2;
@@ -193,14 +196,13 @@ function init() {
   mainComposer.setSize(canvas.width, canvas.height);
 
   loadCarpet();
-  //loadFrame();
 
 }
 
 function render() {
 
   renderer.autoClearColor = false;
-  mainCamera.lookAt(new THREE.Vector3(-(5 * 7) + 0.05, 5, 25 - (1 * 25)))
+  mainCamera.lookAt(artworks[0].frame.position)
 
   let art = artworks[0];
  
@@ -215,43 +217,136 @@ function render() {
 
 }
 
+// create the particle variables
+var particleCount = 5000,
+    particles = new THREE.BufferGeometry(),
+    pMaterial = new THREE.PointsMaterial({
+      color: 0xFFFFFF,
+      size: 0.1
+    });
+
+let vertices = [];
+
+// now create the individual particles
+for (var p = 0; p < particleCount; p++) {
+
+  // create a particle with random
+  // position values, -250 -> 250
+  var pX = Math.random() * 200 - 10,
+      pY = Math.random() * 200 - 10,
+      pZ = Math.random() * 200 - 10,
+      particle = new THREE.Vector3(pX, pY, pZ)
+
+  // add it to the geometry
+  vertices.push(pX, pX, pZ)
+  particles.setAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
+}
+
+// create the particle system
+var particleSystem = new THREE.Points(
+    particles,
+    pMaterial);
+particleSystem.position.set(-14,200,100);
+particleSystem.rotation.set(0, Math.PI, Math.PI * 1.25)
+
+
+// add it to the scene
+mainScene.add(particleSystem);
+
 function animate() {
   requestAnimationFrame(animate);
-  mainControls.update();
+  //mainControls.update();
   artworks[0].controls.update();
   TWEEN.update();
   stats.update();
+  //console.log(keysHeld)
   //render();
+  //console.log(numKeys)
 
   genBalls();
+
+  if(artworks[0].border) {
+    if(numKeys >= 5) {
+    mainCamera.position.y += 1.3 ** (numKeys / 8) - 1;
+    artworks[0].frame.position.y += 1.3 ** (numKeys / 8) - 1;
+    artworks[0].border.position.y += 1.3 ** (numKeys / 8) - 1;
+    }
+
+    if (mainCamera.position.y > 125 && mainCamera.position.y < 200) {
+      mainScene.fog.density += 0.0012;
+    } else if (mainCamera.position.y > 180) {
+        artworks[0].frame.visible = false;
+        artworks[0].border.visible = false;
+    } else {
+      console.log(mainScene.fog.density)
+      if(mainScene.fog.density > 0.015) {
+        mainScene.fog.density -= 0.0035;
+      }
+      artworks[0].frame.visible = true;
+      artworks[0].border.visible = true;
+    }
+
+      console.log(numKeys)
+    if(mainCamera.position.y > 6 && numKeys < 5) {
+      mainCamera.position.y -= 0.4;
+      artworks[0].frame.position.y -= 0.4;
+      artworks[0].border.position.y -= 0.4;
+    }
+  }
+
+
+  
    
   if(!CLICK) {
     render();
   } else {
     artworks[0].composer.render();
-    artworks[0].camera.rotation.y += 1;
-    console.log(artworks[0].camera.rotation)
+    //renderer.autoClearColor = true;
+    //artworks[0].camera.rotation.y += 1;
+    artworks[0].camera.position.set(0,0,0)
+    artworks[0].controls.autoRotate = true;
+    //console.log(artworks[0].camera)
+
+    //console.log(artworks[0].camera.rotateOnWorldAxis(new THREE.Vector3(0, 1, 1), 3))
   }
     
-    
+  //console.log(numKeys)
+  // now create the individual particles
+  particleCount *= numKeys;
+for (var p = 0; p < particleCount; p++) {
+
+  // create a particle with random
+  // position values, -250 -> 250
+  var pX = Math.random() * 600 - 300,
+      pY = Math.random() * 200 - 10,
+      pZ = Math.random() * 600 - 700,
+      particle = new THREE.Vector3(pX, pY, pZ)
+
+  // add it to the geometry
+  vertices.push(pX, pX, pZ)
+  particles.setAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
+}
 }
 
 function onWindowResize() {
 
   mainCamera.aspect = window.innerWidth / window.innerHeight;
   mainCamera.updateProjectionMatrix();
+  if(artworks[0]) {
+    artworks[0].camera.aspect = window.innerWidth / window.innerHeight;
+    artworks[0].camera.updateProjectionMatrix();
+  }
 
   renderer.setSize( window.innerWidth, window.innerHeight );
 
 }
-
 
 addEventListener('keypress', (e) => {
 
   if(keysHeld.indexOf(e.key) == -1) {
     keysHeld.push(e.key);
     //console.log('DOWN')
-    //console.log(e.key)
+    //console.log(e.keyCode)
     numKeys++;
   }
 
@@ -259,11 +354,16 @@ addEventListener('keypress', (e) => {
   switch(e.keyCode) {
     case 27: // 'ESC'
       render();
+
       break;
+    case 32:
+      //CLICK = !CLICK;
     default: 
     break;
   }
 })
+
+
 
 // https://stackoverflow.com/questions/5203407/how-to-detect-if-multiple-keys-are-pressed-at-once-using-javascript
 let count = 0; 
@@ -295,13 +395,6 @@ addEventListener('keyup', (e) => {
   }
 })
 
-addEventListener('click', () => {
-  if(!CLICK) {
-    CLICK = true;
-    console.log(CLICK)
-  }
-})
-
 function getRandomIntInclusive(min, max) {
   min = Math.ceil(min);
   max = Math.floor(max);
@@ -316,13 +409,13 @@ function genBalls() {
 
   
   const color = new THREE.Color(Math.random(), Math.random(), Math.random());
-  while(balls.length < 5) {
+  while(balls.length < numKeys) {
     
     
     let perlin = new ImprovedNoise();
     const geometry = new THREE.SphereGeometry( 0.1, 20, 10 );
-    const material = new THREE.MeshBasicMaterial({
-       color: 0xffffff,
+    const material = new THREE.MeshPhongMaterial({
+       color: color,
        //map: starTexture,
     });
     let sphere = new THREE.Mesh( geometry, material );
@@ -338,16 +431,17 @@ function genBalls() {
 
   for(const ball of balls) {
     if(numKeys == 4) {
-      ball.position.set(
+      /* ball.position.set(
         getRandomIntInclusive(-20, 20), 
         getRandomIntInclusive(-20, 20), 
         getRandomIntInclusive(-20, 20));
+      */
       
       ball.material.color = color;
     }
 
     if(numKeys == 7) {
-      console.log(numKeys)
+      //console.log(numKeys)
       art.camera.up.set(1, 2, 3);
       art.controls.autoRotateSpeed = 5;
     } 
@@ -374,12 +468,19 @@ function genBalls() {
       //ball.position.z -= 0.035
 
     if(ball.position.z < -5) {
-      disposeHierarchy(ball, disposeNode);
+      DISPOSE.disposeHierarchy(ball, DISPOSE.disposeNode);
     }
   }
 
+  if(numKeys == 0) {
+    //art.controls.
+
+    art.controls.autoRotate = true;
+    art.controls.autoRotateSpeed = 7;
+  }
+
   if(numKeys == 1) {
-    art.makeControls(canvas);
+    //art.makeControls(canvas);
     art.controls.enabled = false;
     //art.controls.target.set(0, 0, 0);
     art.controls.autoRotate = true;
@@ -389,14 +490,10 @@ function genBalls() {
   if(numKeys == 2) {
     art.controls.target.set(0, 2, 0);
     art.camera.up.set(0, 1, 0);
-      art.controls.autoRotateSpeed = 3;
+    art.controls.autoRotateSpeed = 3;
   }
 
   if(numKeys == 3) {
-    art.controls.target.set(0, -4, -10);
-    art.camera.up.set(1, 1, 0);
-    art.camera.rotation.z++;
-    art.controls.autoRotateSpeed = -3;
   }
 
   if(numKeys == 4) {
@@ -405,15 +502,33 @@ function genBalls() {
 
     
   }
-  
-  //console.log(numKeys);
 
-  if(numKeys >= 15) {
-    art.camera.up.set(0,0,-3)
+  
+  if(numKeys >= 10) {
+    art.camera.up.set(1, 2, 3)
+  } else {
+    //console.log("boyah!")
+    if(art.camera.position.z < 14) {
+      //art.camera.position.z -= 1.5;
+    }
+    //art.camera.position.z -= 1.5;
+    //console.log(art.camera.position.z)
   }
 
   if(numKeys >= 20) {
-    //numKeys = 0;
+    for(const ball of balls) {
+      let scaleX = ball.scale.x;
+      let scaleY = ball.scale.y;
+      let scaleZ = ball.scale.z;
+
+      ball.scale.set(scaleX += 0.02, scaleY += 0.02, scaleZ += 0.02 );
+      ball.position.z -= 25;
+    }
+
+  }
+
+  if(numKeys >= 30) {
+    art.controls.autoRotateSpeed++;
   }
 
   
@@ -422,7 +537,6 @@ function genBalls() {
 
 
 function makeScene() {
-
   return new THREE.Scene();
 }
 
@@ -434,9 +548,9 @@ function makeCamera() {
    * vice versa, so changing the aspect ratio for different images
    * gives us flexibility
    */
-  let aspect = rtWidth / rtHeight;
+  let aspect = innerWidth / innerHeight;
   const near = 0.1;
-  const far = 500;
+  const far = 1000;
 
   let camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
   camera.position.set(0,0,14);
@@ -481,32 +595,31 @@ function loadCarpet() {
     const root = gltf.scene;
     root.children[0].children[0].children[0].children[2].scale.set(0.2, 0.2, 0.2)
     let carpet = root.children[0].children[0].children[0].children[2].children[1];
-    //console.log(root.children[0].children[0].children[0].children[2].children[1].children[0].children[0]);
     root.children[0].children[0].children[0].children[2].children[1].children[0].children[0].material.opacity = 0;
-    //console.log(carpet);
-    carpet.position.set(-31, -0.85, -16);
+    carpet.position.set(-75, -0.85, -42);
     carpet.rotation.set(Math.PI/2, 0, 0);
-    carpet.scale.set(0.2, 0.2, 0.2);
+    carpet.scale.set(0.5, 0.5, 0.5);
     mainScene.add(carpet);
   });
   
 }
 
-function loadFrame() {
+function loadFrameBorder() {
 
   const gltfLoader = new GLTFLoader();
   
   gltfLoader.load('models/Frame3/scene.gltf', (gltf) => {
     const root = gltf.scene;
-    console.log(root);
-    let frame = root.children[0].children[0];
-    console.log(frame);
-    //frame.material.roughness = 0.1;
-    //frame.material.metalness = 0.5;
-    frame.position.set( -(5 * 3), 5, 25 - (1 * 29));
-    frame.rotation.set(0, 0, Math.PI/2);
-    frame.scale.set(0.85, 0.5, 0.85);
-    //mainScene.add(frame);
+    let border = root.children[0].children[0];
+    border.position.set( -(7 * 2.8), 6, 25 - (1 * 39.7));
+    border.rotation.set(0, 0, Math.PI/2);
+    border.scale.set(2.8, 0.5, 2.8);
+
+    artworks[0].makeFrameBorder(border);
+    //console.log(border,artworks[0].border)
+
+
+    mainScene.add(border);
   });
 
 }
@@ -541,7 +654,7 @@ function makeRoom() {
   mainScene.add(floor);
 
   //Front Wall
-  const frontGeometry = new THREE.PlaneGeometry(planeHeight * scale * 500, planeHeight * 20);
+  const frontGeometry = new THREE.PlaneGeometry(planeHeight * scale * 500, planeHeight * 200);
   const frontMaterial = new THREE.MeshPhongMaterial({
     color: 0xffffff,
     side: THREE.DoubleSide
@@ -583,80 +696,4 @@ function makeRoom() {
   backWall.position.set( planeWidth * scale, 4, 0 );
   backWall.rotation.y = -Math.PI/2;
   mainScene.add(backWall);
-}
-
-
-function scene1() {
-
-}
-
-function scene2() {
-
-}
-
-
-/// GARBAGE COLLECTION /////
-// https://stackoverflow.com/questions/33152132/three-js-collada-whats-the-proper-way-to-dispose-and-release-memory-garbag
-function disposeNode (node)
-{
-    if (node instanceof THREE.Mesh)
-    {
-        if (node.geometry)
-        {
-            node.geometry.dispose ();
-        }
-
-        if (node.material)
-        {
-            if (node.material instanceof THREE.MeshFaceMaterial)
-            {
-                $.each (node.material.materials, function (idx, mtrl)
-                {
-                    if (mtrl.map)               mtrl.map.dispose ();
-                    if (mtrl.lightMap)          mtrl.lightMap.dispose ();
-                    if (mtrl.bumpMap)           mtrl.bumpMap.dispose ();
-                    if (mtrl.normalMap)         mtrl.normalMap.dispose ();
-                    if (mtrl.specularMap)       mtrl.specularMap.dispose ();
-                    if (mtrl.envMap)            mtrl.envMap.dispose ();
-                    if (mtrl.alphaMap)          mtrl.alphaMap.dispose();
-                    if (mtrl.aoMap)             mtrl.aoMap.dispose();
-                    if (mtrl.displacementMap)   mtrl.displacementMap.dispose();
-                    if (mtrl.emissiveMap)       mtrl.emissiveMap.dispose();
-                    if (mtrl.gradientMap)       mtrl.gradientMap.dispose();
-                    if (mtrl.metalnessMap)      mtrl.metalnessMap.dispose();
-                    if (mtrl.roughnessMap)      mtrl.roughnessMap.dispose();
-
-                    mtrl.dispose ();    // disposes any programs associated with the material
-                });
-            }
-            else
-            {
-                if (node.material.map)              node.material.map.dispose ();
-                if (node.material.lightMap)         node.material.lightMap.dispose ();
-                if (node.material.bumpMap)          node.material.bumpMap.dispose ();
-                if (node.material.normalMap)        node.material.normalMap.dispose ();
-                if (node.material.specularMap)      node.material.specularMap.dispose ();
-                if (node.material.envMap)           node.material.envMap.dispose ();
-                if (node.material.alphaMap)         node.material.alphaMap.dispose();
-                if (node.material.aoMap)            node.material.aoMap.dispose();
-                if (node.material.displacementMap)  node.material.displacementMap.dispose();
-                if (node.material.emissiveMap)      node.material.emissiveMap.dispose();
-                if (node.material.gradientMap)      node.material.gradientMap.dispose();
-                if (node.material.metalnessMap)     node.material.metalnessMap.dispose();
-                if (node.material.roughnessMap)     node.material.roughnessMap.dispose();
-
-                node.material.dispose ();   // disposes any programs associated with the material
-            }
-        }
-    }
-}   // disposeNode
-
-function disposeHierarchy (node, callback)
-{
-    for (var i = node.children.length - 1; i >= 0; i--)
-    {
-        var child = node.children[i];
-        disposeHierarchy (child, callback);
-        callback (child);
-    }
 }
