@@ -278,7 +278,7 @@ function animate() {
         artworks[0].frame.visible = false;
         artworks[0].border.visible = false;
     } else {
-      console.log(mainScene.fog.density)
+      //console.log(mainScene.fog.density)
       if(mainScene.fog.density > 0.015) {
         mainScene.fog.density -= 0.0035;
       }
@@ -286,7 +286,7 @@ function animate() {
       artworks[0].border.visible = true;
     }
 
-      console.log(numKeys)
+      //console.log(numKeys)
     if(mainCamera.position.y > 6 && numKeys < 5) {
       mainCamera.position.y -= 0.4;
       artworks[0].frame.position.y -= 0.4;
@@ -467,7 +467,7 @@ function genBalls() {
 
       //ball.position.z -= 0.035
 
-    if(ball.position.z < -5) {
+    if(ball.position.z < -10) {
       DISPOSE.disposeHierarchy(ball, DISPOSE.disposeNode);
     }
   }
@@ -494,6 +494,7 @@ function genBalls() {
   }
 
   if(numKeys == 3) {
+    art.camera.up.set(1, 0, 0)
   }
 
   if(numKeys == 4) {
@@ -522,9 +523,22 @@ function genBalls() {
       let scaleZ = ball.scale.z;
 
       ball.scale.set(scaleX += 0.02, scaleY += 0.02, scaleZ += 0.02 );
-      ball.position.z -= 25;
+      ball.position.z = -5;
     }
 
+  } else {
+    for(const ball of balls) {
+      let scaleX = ball.scale.x;
+      let scaleY = ball.scale.y;
+      let scaleZ = ball.scale.z;
+       //console.log(ball.scale);
+
+      if(scaleX > 1) {
+        ball.scale.set(scaleX -= 0.02, scaleY -= 0.02, scaleZ -= 0.02 );
+      }
+      //ball.scale.set(scaleX -= 0.02, scaleY -= 0.02, scaleZ -= 0.02 );
+      //ball.position.z = -5;
+    }
   }
 
   if(numKeys >= 30) {
